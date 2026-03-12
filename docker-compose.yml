@@ -1,0 +1,71 @@
+services:
+  db:
+    container_name: vuejs-csharp-db
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: crudapp
+    volumes:
+      - dbdata:/var/lib/mysql
+    ports:
+      - "3308:3306" # Expose MySQL on 3308 to avoid conflicts with local MySQL
+
+  adminer:
+    container_name: vuejs-csharp-adminer
+    image: adminer:latest
+    depends_on:
+      - db
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "8081:8080"
+
+  api:
+    container_name: vuejs-csharp-api
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DB_CONNECTION_STRING: server=db;port=3306;database=crudapp;user=root;password=secret
+      CLIENT_URL: https://localhost:5443
+      JWT_SECRET: dev-only-secret-change-me
+    # Internal port only, accessed via nginx
+    expose:
+      - "8080"
+
+  # Nginx reverse proxy for API with HTTPS
+  api-nginx:
+    container_name: vuejs-csharp-api-nginx
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile.api
+    depends_on:
+      - api
+    ports:
+      - "8443:443"
+      - "8080:80"
+    networks:
+      - default
+
+  client:
+    container_name: vuejs-csharp-client
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: https://localhost:8443
+    environment:
+      - VITE_API_URL=https://localhost:8443
+    depends_on:
+      - api-nginx
+    ports:
+      - "5443:443"
+      - "5173:80"
+
+volumes:
+  dbdata:
+
+
