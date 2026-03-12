@@ -1,24 +1,22 @@
-using Microsoft.EntityFrameworkCore;
 using Backend.Data;
-using Backend.Services.Products;
 using Backend.Services.Auth;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
-using System.Linq;
+using Backend.Services.Products;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.IdentityModel.Tokens;
+using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Use Development environment when running locally (dotnet run)
-if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")))
+if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")) &&
+    builder.Environment.IsProduction())
 {
-    // Do not override explicit Test environment.
-    if (builder.Environment.IsProduction())
     builder.Environment.EnvironmentName = Microsoft.Extensions.Hosting.Environments.Development;
 }
 
@@ -76,13 +74,13 @@ builder.Services.AddCors(options =>
     {
         var clientUrl = builder.Configuration["CLIENT_URL"] ?? "http://localhost:5173";
         var origins = new List<string> { clientUrl, clientUrl.Replace("localhost", "127.0.0.1") };
-        
+
         // Also allow Kubernetes client ports when needed
         if (clientUrl.Contains("30073") || clientUrl.Contains("5173"))
         {
             origins.AddRange(new[] { "http://localhost:30073", "http://127.0.0.1:30073" });
         }
-        
+
         policy.WithOrigins(origins.Distinct().ToArray())
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -104,7 +102,7 @@ if (builder.Environment.IsDevelopment())
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 0)), 
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 0)),
         mySqlOptions => mySqlOptions.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(30),
@@ -126,15 +124,15 @@ if (!app.Environment.IsDevelopment())
 // Run migrations and seed on startup (skip in Test)
 if (!app.Environment.IsEnvironment("Test"))
 {
-var retries = 5;
-var delay = TimeSpan.FromSeconds(5);
-for (int i = 0; i < retries; i++)
-{
-    try
+    var retries = 5;
+    var delay = TimeSpan.FromSeconds(5);
+    for (int i = 0; i < retries; i++)
     {
-        using (var scope = app.Services.CreateScope())
+        try
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
                 // Baseline for old DBs created with EnsureCreated (no migrations table)
                 var creator = db.Database.GetService<IRelationalDatabaseCreator>();
@@ -143,7 +141,9 @@ for (int i = 0; i < retries; i++)
                 {
                     var conn = db.Database.GetDbConnection();
                     if (conn.State != System.Data.ConnectionState.Open)
+                    {
                         await conn.OpenAsync();
+                    }
 
                     await using var cmd = conn.CreateCommand();
                     cmd.CommandText =
@@ -169,25 +169,25 @@ for (int i = 0; i < retries; i++)
                         "INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) " +
                         "VALUES ('20251103000000_InitialCreate', '8.0.6');");
                 }
-            
-            // Apply EF Core migrations
-            await db.Database.MigrateAsync();
-            Console.WriteLine("Database migrations applied successfully.");
-            
-            // Seed initial data
-            await DbSeeder.SeedAsync(db);
-            break;
+
+                // Apply EF Core migrations
+                await db.Database.MigrateAsync();
+                Console.WriteLine("Database migrations applied successfully.");
+
+                // Seed initial data
+                await DbSeeder.SeedAsync(db);
+                break;
+            }
         }
-    }
-    catch (Exception ex) when (i < retries - 1)
-    {
-        Console.WriteLine($"Database setup attempt {i + 1} failed: {ex.Message}. Retrying in {delay.TotalSeconds}s...");
-        await Task.Delay(delay);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Database setup failed after {retries} attempts: {ex.Message}");
-        throw;
+        catch (Exception ex) when (i < retries - 1)
+        {
+            Console.WriteLine($"Database setup attempt {i + 1} failed: {ex.Message}. Retrying in {delay.TotalSeconds}s...");
+            await Task.Delay(delay);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Database setup failed after {retries} attempts: {ex.Message}");
+            throw;
         }
     }
 }
@@ -274,4 +274,3 @@ app.Run();
 
 // Required for integration testing via WebApplicationFactory<TEntryPoint>
 public partial class Program { }
-

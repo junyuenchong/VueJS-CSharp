@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+# Husky commit-msg hook: run commitlint on the commit message
+# Use --no-install so npx uses the locally installed commitlint
+npx --no-install commitlint --edit "$1"
+

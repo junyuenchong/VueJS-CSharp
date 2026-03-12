@@ -1,11 +1,11 @@
-# CRUD App (.NET 10 + Vue 3 + MySQL)
+# Full Stack App (.NET 10 API + Vue 3 Frontend + MySQL)
 
-Full-stack CRUD application with Docker Compose and Kubernetes support.
+Full-stack CRUD application with Docker Compose and Kubernetes support, featuring a .NET 10 Web API backend, a Vue 3 SPA frontend, MySQL database, secure JWT-based authentication (access/refresh tokens + CSRF protection), and ready-to-use Docker/Kubernetes deployment configs for local development and production-like environments.
 
 **Stack:**
 
-- API: .NET 10 Web API, EF Core, LINQ Query Syntax, Pomelo MySQL provider
-- Client: Vue 3 (Vite)
+- API (backend): .NET 10 Web API, EF Core, LINQ Query Syntax, Pomelo MySQL provider
+- Client (frontend): Vue 3 (Vite SPA)
 - Database: MySQL 8
 - DB Admin: Adminer
 
@@ -156,6 +156,31 @@ docker exec -it vuejs-csharp-db mysql -uroot -psecret
 - Client: `vuejs-csharp-client`
 
 ## Database Migrations & Seed
+
+### Quick EF Core migration & seeder cheatsheet
+
+```bash
+# Go to backend project folder
+cd backend
+
+# Create a new migration (after you change models)
+dotnet ef migrations add YourMigrationName
+
+# Apply all migrations to the database
+dotnet ef database update
+
+# Roll back to the previous / a specific migration
+dotnet ef database update PreviousMigrationName
+
+# Go back to initial state with no migrations (⚠ will reset schema)
+dotnet ef database update 0
+
+# Remove the last migration file that has not been applied yet
+dotnet ef migrations remove
+
+# Run the API (will automatically run migrations + seeder on startup)
+dotnet run
+```
 
 ### Automatic Setup (Default)
 
@@ -715,3 +740,55 @@ dotnet test .\Test\E2E\Backend.E2ETests.csproj
 
 - **Rate limiting** on auth endpoints (register/login/refresh/logout): `20 req/min/IP`
 - **HSTS + HTTPS redirection** enabled when **not** in Development
+
+## Git workflow, commit format & CI
+
+### Git workflow (simple)
+
+```powershell
+# 1. See what changed
+PS C:\Users\LEGION\Desktop\MyInterviewProject\VueJS-CSharp> git status
+
+# 2. Stage the files you changed
+PS C:\Users\LEGION\Desktop\MyInterviewProject\VueJS-CSharp> git add README.md .github/workflows/ci.yml
+# or just add everything
+PS C:\Users\LEGION\Desktop\MyInterviewProject\VueJS-CSharp> git add .
+
+# 3. Commit with a clear English message
+PS C:\Users\LEGION\Desktop\MyInterviewProject\VueJS-CSharp> git commit -m "chore: update README and add CI workflow"
+
+# 4. Push to GitHub (main branch)
+PS C:\Users\LEGION\Desktop\MyInterviewProject\VueJS-CSharp> git push origin main
+```
+
+### Commit message format
+
+- **Use clear English** that explains the change.  
+- Try to keep it **at least 10 characters long** so it is descriptive enough.  
+- A local **Husky + Commitlint** hook will validate the format when you run `git commit`.  
+- You can follow a lightweight convention like:
+  - `feat: add product filters`
+  - `fix: handle auth token refresh error`
+  - `chore: update README and CI`
+
+To enable Husky/Commitlint locally (one-time per clone):
+
+```bash
+cd VueJS-CSharp
+npm install
+npx husky install
+```
+
+### CI workflow (GitHub Actions)
+
+- CI file is at: `.github/workflows/ci.yml`.
+- It runs automatically on every **push** or **pull request** to `main`.
+- **Backend job**:
+  - Restores and builds the .NET 10 API.
+  - Checks C# code format with `dotnet format --verify-no-changes`.
+  - Runs Unit, Integration, and E2E tests under `backend/Test`.
+- **Frontend job**:
+  - Installs dependencies in `frontend` with `npm ci`.
+  - Runs frontend tests with `npm test` (Vitest).
+
+You can see CI results in the **Actions** tab of the GitHub repo.

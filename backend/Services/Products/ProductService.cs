@@ -70,8 +70,8 @@ public class ProductService : IProductService
     public async Task<Product?> GetByIdAsync(int id)
     {
         return await (from product in _context.Products
-                     where product.Id == id
-                     select product).FirstOrDefaultAsync();
+                      where product.Id == id
+                      select product).FirstOrDefaultAsync();
     }
 
     public async Task<Product> CreateAsync(Product product)

@@ -1,0 +1,66 @@
+name: CI - Backend & Frontend
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  backend:
+    name: Backend (.NET 10) - build, format check, tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore backend
+        working-directory: backend
+        run: dotnet restore
+
+      - name: Build backend
+        working-directory: backend
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Check C# code format
+        working-directory: backend
+        run: dotnet format --verify-no-changes
+
+      - name: Run backend tests (Unit)
+        working-directory: backend
+        run: dotnet test ./Test/Unit/Backend.UnitTests.csproj --configuration Release
+
+      - name: Run backend tests (Integration)
+        working-directory: backend
+        run: dotnet test ./Test/Integration/Backend.IntegrationTests.csproj --configuration Release
+
+      - name: Run backend tests (E2E)
+        working-directory: backend
+        run: dotnet test ./Test/E2E/Backend.E2ETests.csproj --configuration Release
+
+  frontend:
+    name: Frontend (Vue 3) - install & tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.x"
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests (Vitest)
+        working-directory: frontend
+        run: npm test
