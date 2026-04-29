@@ -8,12 +8,18 @@
       </div>
     </header>
 
-    <div v-if="!token">
-      <AuthPage />
+    <div v-if="bootstrapping" class="boot">
+      Loading…
     </div>
 
     <div v-else>
-      <ProductsPage />
+      <div v-if="!token">
+        <AuthPage />
+      </div>
+
+      <div v-else>
+        <ProductsPage />
+      </div>
     </div>
   </main>
 </template>
@@ -24,7 +30,7 @@ import AuthPage from "./features/auth/pages/AuthPage.vue";
 import { onMounted } from "vue";
 import { useAuth } from "./features/auth/composables/useAuth";
 
-const { token, email, bootstrap, logout } = useAuth();
+const { token, email, bootstrapping, bootstrap, logout } = useAuth();
 
 function getErrorMessage(error, fallbackMessage) {
   const message =
@@ -129,6 +135,12 @@ button {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.boot {
+  margin-top: 1.25rem;
+  padding: 0.75rem 0;
+  color: var(--ui-muted);
 }
 
 @media (max-width: 640px) {

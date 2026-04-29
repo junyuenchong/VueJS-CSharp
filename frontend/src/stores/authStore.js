@@ -6,6 +6,7 @@ export const useAuthStore = defineStore("auth", {
     state: () => ({
         token: getToken(),
         view: "login",
+        bootstrapping: true,
     }),
     getters: {
         email: () => getEmail(),
@@ -32,13 +33,19 @@ export const useAuthStore = defineStore("auth", {
             this.token = getToken();
         },
         async bootstrap() {
-            if (this.token) return;
+            this.bootstrapping = true;
+            if (this.token) {
+                this.bootstrapping = false;
+                return;
+            }
             try {
                 const { data } = await authApi().refresh();
                 setAuth({ token: data.token, email: data.email, csrfToken: data.csrfToken });
                 this.refreshAuth();
             } catch {
                 // user is not logged in
+            } finally {
+                this.bootstrapping = false;
             }
         },
         async login(payload) {

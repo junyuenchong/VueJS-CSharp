@@ -72,7 +72,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting("auth_refresh")]
     /*
      * Rotate refresh token and return a new access token (requires CSRF header).
      */
@@ -89,7 +89,10 @@ public class AuthController : ControllerBase
         }
         catch (InvalidOperationException ex) when (ex.Message == "Invalid CSRF token")
         {
-            return Forbid(ex.Message);
+            return Problem(
+                detail: ex.Message,
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Forbidden");
         }
         catch (Exception ex)
         {
@@ -99,7 +102,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("logout")]
-    [EnableRateLimiting("auth")]
+    [EnableRateLimiting("auth_refresh")]
     /*
      * Revoke the current refresh token (requires CSRF header) and clear auth cookies.
      */
@@ -112,7 +115,10 @@ public class AuthController : ControllerBase
         }
         catch (InvalidOperationException ex) when (ex.Message == "Invalid CSRF token")
         {
-            return Forbid(ex.Message);
+            return Problem(
+                detail: ex.Message,
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Forbidden");
         }
         catch (Exception ex)
         {

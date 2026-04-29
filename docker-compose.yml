@@ -35,6 +35,12 @@ services:
     # Internal port only, accessed via nginx
     expose:
       - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
 
   # Nginx reverse proxy for API (HTTP localhost)
   api-nginx:
@@ -43,11 +49,18 @@ services:
       context: .
       dockerfile: nginx/Dockerfile.api
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "8080:80"
     networks:
       - default
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
 
   client:
     container_name: vuejs-csharp-client
@@ -59,7 +72,8 @@ services:
     environment:
       - VITE_API_URL=http://localhost:8080
     depends_on:
-      - api-nginx
+      api-nginx:
+        condition: service_healthy
     ports:
       - "5173:80"
 

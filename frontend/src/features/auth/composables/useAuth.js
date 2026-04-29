@@ -5,13 +5,14 @@ import { useAuthStore } from "@/stores/authStore";
 export function useAuth() {
     const store = useAuthStore();
 
-    const { token, view } = storeToRefs(store);
+    const { token, view, bootstrapping } = storeToRefs(store);
     const email = computed(() => store.email);
 
     return {
         token,
         email,
         view,
+        bootstrapping,
         setView: store.setView,
         refreshAuth: store.refreshAuth,
         bootstrap: store.bootstrap,

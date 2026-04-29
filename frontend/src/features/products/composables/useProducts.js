@@ -29,12 +29,30 @@ export function useProducts() {
         queryFn: async ({ pageParam }) => {
             try {
                 errorMessage.value = "";
-                const res = await api.list({
+                const params = {
                     limit: 20,
                     cursor: pageParam,
                     search: search.value.trim() || null,
-                });
-                return res.data;
+                };
+
+                const maxAttempts = 5;
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                    try {
+                        const res = await api.list(params);
+                        return res.data;
+                    } catch (error) {
+                        const status = error?.response?.status;
+                        const isTransient =
+                            !error?.response || status === 502 || status === 503 || status === 504;
+
+                        if (!isTransient || attempt === maxAttempts) {
+                            throw error;
+                        }
+
+                        const delayMs = 250 * Math.pow(2, attempt - 1);
+                        await new Promise((r) => setTimeout(r, delayMs));
+                    }
+                }
             } catch (error) {
                 errorMessage.value = getErrorMessage(error, "Failed to load products.");
                 return { items: [], nextCursor: null };
