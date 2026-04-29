@@ -6,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Backend.E2ETests;
 
-/// <summary>Boots the API for E2E tests with an in-memory DB.</summary>
+/*
+ * Boots the API for E2E tests with an in-memory DB.
+ */
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbName = $"E2E-{Guid.NewGuid()}";

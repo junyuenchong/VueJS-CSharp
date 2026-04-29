@@ -6,7 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Backend.IntegrationTests;
 
-/// <summary>Boots the API for integration tests with an in-memory DB.</summary>
+/*
+ * Boots the API for integration tests with an in-memory DB.
+ */
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)

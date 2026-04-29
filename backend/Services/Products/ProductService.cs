@@ -1,11 +1,17 @@
 using Backend.Data;
 using Backend.Models;
 using Backend.DTOs.Products.Queries;
-using Backend.DTOs.Common.Responses;
+using Backend.DTOs.Common.Pagination;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services.Products;
 
+/*
+ * Handles product reads and writes using EF Core.
+ * - Supports fast keyset pagination.
+ * - Filters are optimized for database indexes.
+ * - Uses FULLTEXT for text search when possible; falls back to LIKE for short terms.
+ */
 public class ProductService : IProductService
 {
     private readonly AppDbContext _context;
@@ -15,6 +21,10 @@ public class ProductService : IProductService
         _context = context;
     }
 
+    /*
+     * List products with filters/search, then keyset page by Id.
+     * nextCursor is returned when there are more rows.
+     */
     public async Task<PagedResult<Product>> GetAllAsync(ProductQueryParameters query)
     {
         var limit = query.Limit;
@@ -27,9 +37,20 @@ public class ProductService : IProductService
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var term = query.Search.Trim();
-            q = q.Where(p =>
-                p.Name.Contains(term) ||
-                (p.Description != null && p.Description.Contains(term)));
+            // Use MySQL FULLTEXT path for longer tokens; keep LIKE fallback for short terms.
+            if (term.Length >= 3)
+            {
+                q = q.Where(p => EF.Functions.Match(
+                    new[] { p.Name, p.Description! },
+                    term,
+                    MySqlMatchSearchMode.NaturalLanguage) > 0);
+            }
+            else
+            {
+                q = q.Where(p =>
+                    p.Name.Contains(term) ||
+                    (p.Description != null && p.Description.Contains(term)));
+            }
         }
 
         if (query.MinPrice.HasValue)
@@ -67,13 +88,15 @@ public class ProductService : IProductService
         };
     }
 
+    /* Read one product by primary key. */
     public async Task<Product?> GetByIdAsync(int id)
     {
-        return await (from product in _context.Products
-                      where product.Id == id
-                      select product).FirstOrDefaultAsync();
+        return await _context.Products
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id);
     }
 
+    /* Create a product row. */
     public async Task<Product> CreateAsync(Product product)
     {
         _context.Products.Add(product);
@@ -81,6 +104,10 @@ public class ProductService : IProductService
         return product;
     }
 
+    /*
+     * Update a product row.
+     * Returns false when the id doesn't exist.
+     */
     public async Task<bool> UpdateAsync(int id, Product product)
     {
         if (id != product.Id)
@@ -95,6 +122,10 @@ public class ProductService : IProductService
         return true;
     }
 
+    /*
+     * Delete a product row.
+     * Returns false when the id doesn't exist.
+     */
     public async Task<bool> DeleteAsync(int id)
     {
         var product = await GetByIdAsync(id);
@@ -106,10 +137,9 @@ public class ProductService : IProductService
         return true;
     }
 
+    /* Fast exists check for update logic. */
     public async Task<bool> ExistsAsync(int id)
     {
-        return await (from product in _context.Products
-                      where product.Id == id
-                      select product).AnyAsync();
+        return await _context.Products.AsNoTracking().AnyAsync(p => p.Id == id);
     }
 }

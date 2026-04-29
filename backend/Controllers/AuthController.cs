@@ -8,17 +8,26 @@ namespace Backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+/*
+ * Authentication endpoints (register/login/refresh/logout).
+ * Uses JWT access token + refresh-token cookie with CSRF header protection.
+ */
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, ILogger<AuthController> logger)
     {
         _authService = authService;
+        _logger = logger;
     }
 
     [HttpPost("register")]
     [EnableRateLimiting("auth")]
+    /*
+     * Create a new user account and issue tokens.
+     */
     public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -31,10 +40,18 @@ public class AuthController : ControllerBase
         {
             return Conflict(ex.Message);
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to register user.");
+            return Problem("An unexpected error occurred during registration.");
+        }
     }
 
     [HttpPost("login")]
     [EnableRateLimiting("auth")]
+    /*
+     * Validate credentials and issue tokens.
+     */
     public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -47,10 +64,18 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(ex.Message);
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to login user.");
+            return Problem("An unexpected error occurred during login.");
+        }
     }
 
     [HttpPost("refresh")]
     [EnableRateLimiting("auth")]
+    /*
+     * Rotate refresh token and return a new access token (requires CSRF header).
+     */
     public async Task<ActionResult<AuthResponseDto>> Refresh()
     {
         try
@@ -66,10 +91,18 @@ public class AuthController : ControllerBase
         {
             return Forbid(ex.Message);
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to refresh token.");
+            return Problem("An unexpected error occurred while refreshing authentication.");
+        }
     }
 
     [HttpPost("logout")]
     [EnableRateLimiting("auth")]
+    /*
+     * Revoke the current refresh token (requires CSRF header) and clear auth cookies.
+     */
     public async Task<IActionResult> Logout()
     {
         try
@@ -80,6 +113,11 @@ public class AuthController : ControllerBase
         catch (InvalidOperationException ex) when (ex.Message == "Invalid CSRF token")
         {
             return Forbid(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to logout user.");
+            return Problem("An unexpected error occurred during logout.");
         }
     }
 }

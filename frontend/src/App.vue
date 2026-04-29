@@ -4,7 +4,7 @@
       <h1>CRUD App</h1>
       <div v-if="token" class="right">
         <span class="email">{{ email }}</span>
-        <button @click="logout">Logout</button>
+        <button @click="handleLogout">Logout</button>
       </div>
     </header>
 
@@ -26,8 +26,35 @@ import { useAuth } from "./features/auth/composables/useAuth";
 
 const { token, email, bootstrap, logout } = useAuth();
 
+function getErrorMessage(error, fallbackMessage) {
+  const message =
+    error?.response?.data?.detail ||
+    error?.response?.data?.message ||
+    error?.response?.data?.title ||
+    (typeof error?.response?.data === "string" ? error.response.data : null) ||
+    error?.message;
+
+  if (typeof message === "string" && message.trim().length > 0) {
+    return message;
+  }
+
+  return fallbackMessage;
+}
+
+async function handleLogout() {
+  try {
+    await logout();
+  } catch (error) {
+    alert(getErrorMessage(error, "Logout failed"));
+  }
+}
+
 onMounted(async () => {
-  await bootstrap();
+  try {
+    await bootstrap();
+  } catch (error) {
+    alert(getErrorMessage(error, "Failed to initialize app"));
+  }
 });
 </script>
 

@@ -1,38 +1,38 @@
 namespace Backend.DTOs.Products.Queries;
 
-/// <summary>
-/// Query parameters for cursor-based pagination and filtering.
-/// </summary>
+/*
+ * Query parameters for cursor pagination + filtering.
+ */
 public class ProductQueryParameters
 {
-    /// <summary>
-    /// Cursor for keyset pagination. Returns results with Id greater than this value.
-    /// </summary>
+    /*
+     * Cursor for keyset pagination. Returns rows with Id > cursor.
+     */
     public int? Cursor { get; set; }
 
-    /// <summary>
-    /// Page size (max items to return).
-    /// </summary>
+    /*
+     * Page size (max items to return).
+     */
     public int Limit { get; set; } = 20;
 
-    /// <summary>
-    /// Free-text search applied to Name/Description.
-    /// </summary>
+    /*
+     * Search term applied to Name/Description.
+     */
     public string? Search { get; set; }
 
-    /// <summary>
-    /// Minimum price (inclusive).
-    /// </summary>
+    /*
+     * Minimum price (inclusive).
+     */
     public decimal? MinPrice { get; set; }
 
-    /// <summary>
-    /// Maximum price (inclusive).
-    /// </summary>
+    /*
+     * Maximum price (inclusive).
+     */
     public decimal? MaxPrice { get; set; }
 
-    /// <summary>
-    /// If true, only products with Stock > 0 are returned.
-    /// </summary>
+    /*
+     * If true, only products with Stock > 0 are returned.
+     */
     public bool? InStock { get; set; }
 }
 

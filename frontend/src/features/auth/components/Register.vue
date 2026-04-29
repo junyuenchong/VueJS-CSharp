@@ -24,6 +24,21 @@ const email = ref("");
 const password = ref("");
 const loading = ref(false);
 
+function getErrorMessage(error) {
+  const message =
+    error?.response?.data?.detail ||
+    error?.response?.data?.message ||
+    error?.response?.data?.title ||
+    (typeof error?.response?.data === "string" ? error.response.data : null) ||
+    error?.message;
+
+  if (typeof message === "string" && message.trim().length > 0) {
+    return message;
+  }
+
+  return "Register failed";
+}
+
 async function submit() {
   loading.value = true;
   try {
@@ -33,8 +48,7 @@ async function submit() {
     });
     emit("authed");
   } catch (e) {
-    const msg = e?.response?.data || e?.message || "Register failed";
-    alert(msg);
+    alert(getErrorMessage(e));
   } finally {
     loading.value = false;
   }

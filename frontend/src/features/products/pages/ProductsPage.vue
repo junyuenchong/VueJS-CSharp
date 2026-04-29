@@ -1,6 +1,7 @@
 <template>
   <section>
     <h2>Products</h2>
+    <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
     <ProductForm :product="editing" @save="save" @cancel="cancelEdit" />
 
@@ -26,6 +27,7 @@ const {
   items,
   nextCursor,
   loading,
+  errorMessage,
   editing,
   search,
   reload,
@@ -51,6 +53,10 @@ reload();
 <style scoped>
 .pager {
   margin-top: 1rem;
+}
+.error {
+  color: #b00020;
+  margin: 0.5rem 0;
 }
 </style>
 

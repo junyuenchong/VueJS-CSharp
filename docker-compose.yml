@@ -30,13 +30,13 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       DB_CONNECTION_STRING: server=db;port=3306;database=crudapp;user=root;password=secret
-      CLIENT_URL: https://localhost:5443
+      CLIENT_URL: http://localhost:5173
       JWT_SECRET: dev-only-secret-change-me
     # Internal port only, accessed via nginx
     expose:
       - "8080"
 
-  # Nginx reverse proxy for API with HTTPS
+  # Nginx reverse proxy for API (HTTP localhost)
   api-nginx:
     container_name: vuejs-csharp-api-nginx
     build:
@@ -45,7 +45,6 @@ services:
     depends_on:
       - api
     ports:
-      - "8443:443"
       - "8080:80"
     networks:
       - default
@@ -56,13 +55,12 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        VITE_API_URL: https://localhost:8443
+        VITE_API_URL: http://localhost:8080
     environment:
-      - VITE_API_URL=https://localhost:8443
+      - VITE_API_URL=http://localhost:8080
     depends_on:
       - api-nginx
     ports:
-      - "5443:443"
       - "5173:80"
 
 volumes:

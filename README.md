@@ -1,30 +1,31 @@
 # Full Stack App (.NET 10 API + Vue 3 Frontend + MySQL)
 
-Full-stack CRUD application with Docker Compose and Kubernetes support, featuring a .NET 10 Web API backend, a Vue 3 SPA frontend, MySQL database, secure JWT-based authentication (access/refresh tokens + CSRF protection), and ready-to-use Docker/Kubernetes deployment configs for local development and production-like environments.
+Full-stack CRUD app: a .NET 10 Web API + a Vue 3 SPA + a MySQL database.
+It comes with Docker Compose and Kubernetes manifests so you can run it locally and in a production-like setup.
 
 **Stack:**
 
-- API (backend): .NET 10 Web API, EF Core, LINQ Query Syntax, Pomelo MySQL provider
+- API (backend): .NET 10 Web API, EF Core (LINQ), explicit DTO mappings in `Mappings/`, Pomelo MySQL provider
 - Client (frontend): Vue 3 (Vite SPA)
 - Database: MySQL 8
 - DB Admin: Adminer
 
-## Why Docker and Kubernetes?
+## Docker vs Kubernetes (when to use which)
 
-### Docker Compose (Recommended for Development)
+### Docker Compose (best for local dev)
 
 - **Simple**: One command to start everything
 - **Fast**: Perfect for local development
 - **Easy setup**: No cluster needed
 
-### Kubernetes (For Production/Testing)
+### Kubernetes (good for production/testing)
 
 - **Scalable**: Run multiple replicas, handle traffic spikes
 - **Resilient**: Auto-restarts failed pods, health checks
 - **Production-ready**: Used by most cloud providers
 - **Learning**: Practice real-world deployment
 
-**Quick Decision:**
+**Quick rule of thumb:**
 
 - **Learning/Development?** → Use Docker Compose
 - **Production/Scaling?** → Use Kubernetes
@@ -48,53 +49,48 @@ Full-stack CRUD application with Docker Compose and Kubernetes support, featurin
 - Minikube/kind cluster, OR
 - Any Kubernetes cluster (EKS, GKE, AKS, etc.)
 
-## Quick Start: Docker Compose (Easiest)
+## Quick start (Docker Compose)
 
-### 🚀 First Time Setup (One-time only)
+### 🚀 First time setup
 
-**1. Generate SSL certificates (required for HTTPS)**
+**1. Build and start**
 
-On Windows (PowerShell):
-
-```powershell
-.\nginx\generate-ssl.ps1
-```
-
-On Linux/Mac (Bash):
+From the **repo root** (run `npm install` once if you haven't yet):
 
 ```bash
-chmod +x nginx/generate-ssl.sh
-./nginx/generate-ssl.sh
+npm start
 ```
 
-**2. Build and start all services (first time)**
+Same as `npm run docker:up`. Raw Docker command:
 
 ```bash
 docker compose -p crudapp up -d --build
 ```
 
-⏳ **Wait 10-30 seconds** for all services to start (database initialization takes time)
+⏳ Give it **10–30 seconds** on first run (MySQL needs a moment to initialize).
 
 ---
 
-### ⚡ Running Again (After first setup)
+### ⚡ Running again
 
-**Just start the services** (no SSL generation or build needed):
+**Just start the services:**
 
 ```bash
-docker compose -p crudapp up -d
+npm start
 ```
 
-That's it! Everything will start using existing images and certificates.
+Or **`npm run docker:start`** (starts without rebuild, faster when images already exist). Raw: `docker compose -p crudapp up -d`.
+
+That’s it.
 
 ---
 
-### 🌐 Access Your Apps
+### 🌐 Open the apps
 
-Once services are running:
+Once everything is up:
 
-- **Client (Vue)**: **https://localhost:5443** (or http://localhost:5173 redirects to HTTPS)
-- **API (Swagger)**: **https://localhost:8443/swagger** (or http://localhost:8080 redirects to HTTPS)
+- **Client (Vue)**: **http://localhost:5173**
+- **API (Swagger)**: **http://localhost:8080/swagger**
 - **Adminer (DB UI)**: http://localhost:8081
   - System: MySQL
   - Server: `db` (when using Docker Compose)
@@ -102,13 +98,11 @@ Once services are running:
   - Password: `secret`
   - Database: `crudapp`
 
-**For Local Development:**
+**If you're running the API locally (`dotnet run`):**
 
 - If running API with `dotnet run`, use Adminer with:
   - Server: `host.docker.internal:3308` (when accessing Docker MySQL from Adminer)
   - Or connect directly to local MySQL on `localhost:3306`
-
-**Note:** You may see a browser warning about self-signed certificates. Click "Advanced" → "Proceed to localhost" to continue. This is normal for development certificates.
 
 ---
 
@@ -155,46 +149,45 @@ docker exec -it vuejs-csharp-db mysql -uroot -psecret
 - API Nginx: `vuejs-csharp-api-nginx`
 - Client: `vuejs-csharp-client`
 
-## Database Migrations & Seed
+## Database migrations & seeding
 
-### Quick EF Core migration & seeder cheatsheet
+### Quick commands (EF Core)
 
 ```bash
-# Go to backend project folder
+# Go to the backend project
 cd backend
 
-# Create a new migration (after you change models)
+# Create a migration (after you change models)
 dotnet ef migrations add YourMigrationName
 
-# Apply all migrations to the database
+# Apply migrations
 dotnet ef database update
 
-# Roll back to the previous / a specific migration
+# Roll back to a specific migration
 dotnet ef database update PreviousMigrationName
 
-# Go back to initial state with no migrations (⚠ will reset schema)
+# Go back to "no migrations" (⚠ resets schema)
 dotnet ef database update 0
 
-# Remove the last migration file that has not been applied yet
+# Remove the last migration (only if not applied)
 dotnet ef migrations remove
 
-# Run the API (will automatically run migrations + seeder on startup)
+# Run the API (applies migrations + seeds on startup)
 dotnet run
 ```
 
-### Automatic Setup (Default)
+### What happens on startup (default)
 
-**On startup:** The API automatically:
+When the API starts, it:
 
-1. Applies EF Core migrations using `Database.MigrateAsync()` (creates/updates database schema)
-2. Seeds 3 sample products (Laptop, Mouse, Keyboard) if the table is empty
+1. Applies EF Core migrations (`Database.MigrateAsync()`)
+2. Seeds 3 sample products (Laptop, Mouse, Keyboard) if `Products` is empty
 
-**How it works:**
+**Details:**
 
-- `Database.MigrateAsync()` runs on API startup to apply pending migrations (see `backend/Program.cs`)
-- `DbSeeder.SeedAsync()` runs after migrations to populate initial data using LINQ queries
-- Uses proper EF Core migrations (not `EnsureCreatedAsync()`) for production-ready database management
-- All database queries use LINQ Query Syntax for consistency and readability
+- Migrations are applied in `backend/Program.cs`.
+- Seeding happens in `backend/Seeder/DbSeeder.cs`. It uses **`CreateProductDto` + `ProductMappings.ToEntity()`** (same mapping path as `POST /api/Products`).
+- Reads use `AsNoTracking()` where it makes sense (see `ProductService`, `AuthService`).
 - Connection string priority:
   1. `DB_CONNECTION_STRING` environment variable
   2. `appsettings.{Environment}.json` (Development uses `appsettings.Development.json`)
@@ -207,9 +200,9 @@ dotnet run
 - Automatically uses Development environment when running `dotnet run`
 - Configured via `backend/appsettings.Development.json`
 
-### Manual Migration & Seeding
+### Doing it manually (optional)
 
-**Option 1: Create New Migrations (When Models Change)**
+**Option 1: Create a migration (when models change)**
 
 When you modify your models (e.g., `Product.cs`), create a new migration:
 
@@ -229,11 +222,11 @@ dotnet ef migrations add MigrationName
 dotnet ef database update
 ```
 
-**Note:** Migrations are automatically applied on API startup, but you can apply them manually if needed.
+Migrations auto-apply on startup, but manual is handy when you're debugging.
 
-**Reverting Migrations**
+**Rolling back migrations**
 
-Yes, you can revert migrations! Here are the common scenarios:
+You can roll migrations back. Common examples:
 
 ```bash
 # Navigate to API directory
@@ -259,14 +252,14 @@ dotnet ef migrations remove
 # First, manually delete the migration file, then update the snapshot
 ```
 
-**Important Notes:**
+**Notes:**
 
 - ⚠️ **Data Loss Warning**: Reverting migrations may cause data loss if the migration removed columns/tables
 - **Applied Migrations**: If a migration is already applied to the database, you must use `dotnet ef database update` to revert it
 - **Unapplied Migrations**: If a migration hasn't been applied yet, use `dotnet ef migrations remove` to delete it
 - **Production**: Be very careful when reverting migrations in production. Always backup your database first!
 
-**Example Workflow:**
+**Example workflow:**
 
 ```bash
 # 1. Check current migration status
@@ -282,10 +275,10 @@ dotnet ef database update InitialCreate
 dotnet ef migrations remove
 ```
 
-**Option 2: Run Migrations/Seeder Manually (Docker)**
+**Option 2: Run migrations/seeding via Docker**
 
 ```bash
-# Execute migrations and seeder inside the API container
+# Run the API inside the container (it will migrate + seed)
 docker exec -it vuejs-csharp-api dotnet run --project /app
 
 # Or run EF Core commands directly in the container
@@ -300,15 +293,15 @@ dotnet ef database update PreviousMigrationName  # To revert
 docker exec -it vuejs-csharp-db mysql -uroot -psecret crudapp
 ```
 
-**Option 3: Run Seeder Manually (Local Development)**
+**Option 3: Run seeding (local dev)**
 
 ```bash
 cd backend
 dotnet run
-# The seeder runs automatically on startup
+# Seeder runs automatically on startup
 ```
 
-**Option 4: Reset Database and Reseed**
+**Option 4: Reset DB and reseed**
 
 ```bash
 # Stop containers
@@ -321,7 +314,7 @@ docker compose -p crudapp down -v
 docker compose -p crudapp up -d --build
 ```
 
-**Manual SQL Seeding:**
+**Manual SQL seed (if you really want to):**
 
 If you want to seed manually via SQL:
 
@@ -336,31 +329,24 @@ INSERT INTO Products (Name, Description, Price, Stock) VALUES
 ('Keyboard', 'Mechanical', 79.99, 50);
 ```
 
-## HTTPS Setup & Nginx Configuration
+## Nginx (HTTP localhost)
 
 This project uses **two nginx instances**:
 
-1. **Frontend Nginx** (`client` service): Serves Vue.js static files with HTTPS
-2. **Backend Nginx** (`api-nginx` service): Reverse proxy that adds HTTPS to the .NET API
+1. **Frontend Nginx** (`client` service): Serves Vue.js static files on HTTP
+2. **Backend Nginx** (`api-nginx` service): Reverse proxy for the .NET API on HTTP
 
-**Quick Overview:**
+**In plain English:**
 
-- **API**: nginx reverse proxy forwards HTTPS requests to the .NET API
-- **Client**: nginx serves the Vue.js client with HTTPS
-- **SSL Certificates**: Self-signed certificates for development (generated via `nginx/generate-ssl.sh` or `nginx/generate-ssl.ps1`)
+- **API**: nginx reverse proxy forwards HTTP requests to the .NET API
+- **Client**: nginx serves the Vue.js client on HTTP
 
 **📖 Detailed Nginx Setup Guide**: See [`nginx/NGINX_SETUP.md`](nginx/NGINX_SETUP.md) for complete architecture, configuration, and troubleshooting.
 
-**For production**, replace the self-signed certificates with:
-
-- Let's Encrypt certificates (free, automated)
-- Certificates from a trusted CA
-- Kubernetes ingress with cert-manager
-
 **Ports (Docker Compose):**
 
-- Client HTTPS: `5443` (redirects from HTTP `5173`)
-- API HTTPS: `8443` (redirects from HTTP `8080`)
+- Client HTTP: `5173`
+- API HTTP: `8080`
 - MySQL: `3308` (exposed for local development, internal port 3306)
 - Adminer: `8081`
 
@@ -403,59 +389,121 @@ Examples:
 
 ```bash
 # First page
-curl -k "https://localhost:8443/api/Products?limit=20"
+curl "http://localhost:8080/api/Products?limit=20"
 
 # Next page (use nextCursor from previous response)
-curl -k "https://localhost:8443/api/Products?cursor=42&limit=20"
+curl "http://localhost:8080/api/Products?cursor=42&limit=20"
 
 # Filter + search
-curl -k "https://localhost:8443/api/Products?search=mouse&minPrice=10&maxPrice=50&inStock=true&limit=20"
+curl "http://localhost:8080/api/Products?search=mouse&minPrice=10&maxPrice=50&inStock=true&limit=20"
 ```
 
 **Swagger UI:**
 
-- Docker Compose: https://localhost:8443/swagger
+- Docker Compose: http://localhost:8080/swagger
 - Kubernetes: http://localhost:30080/swagger
 - Local Development: http://localhost:5000/swagger
 
 ## Code Implementation
 
-**Database Queries:**
+### Manual mapping (no AutoMapper)
 
-All database queries use **LINQ Query Syntax** for better readability and maintainability:
+DTOs and entities are mapped with **explicit C#** in `backend/Mappings/` (easy to grep, debug, and code-review):
+
+| File                          | Role                                                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `Mappings/ProductMappings.cs` | `CreateProductDto` / `UpdateProductDto` → `Product` via `.ToEntity()`                                |
+| `Mappings/AuthMappings.cs`    | Email normalization, `RegisterDto` → `User`, `User` + tokens → `AuthResponseDto`, refresh-token rows |
+
+There is **no** AutoMapper, Mapster, or Mapperly dependency—mappings stay visible in source control.
+
+### Request flow (how it runs)
+
+**Create / update product**
+
+1. HTTP `POST` / `PUT` → JSON binds to `CreateProductDto` / `UpdateProductDto`.
+2. `ProductsController` calls `dto.ToEntity()` → `Product` (`ProductMappings`).
+3. `IProductService` saves with EF Core (`CreateAsync` / `UpdateAsync`).
+4. API returns the `Product` JSON (or `204` on update).
+
+**List products (cursor pagination)**
+
+1. `GET /api/Products?cursor=&limit=&search=...` → `ProductQueryParameters`.
+2. `ProductService.GetAllAsync` builds an `IQueryable`, applies filters, reads `PagedResult<Product>` (`DTOs/Common/Pagination/PagedResult.cs`).
+3. JSON: `{ items, nextCursor, limit }`.
+
+**Register / login / refresh**
+
+1. `RegisterDto` / `LoginDto` → `AuthService` (email normalization via `AuthMappings.NormalizeEmail` where needed).
+2. Password hashing and JWT issuance stay in `AuthService`; API responses use `user.ToAuthResponse(accessToken, csrfToken)`.
+3. Refresh tokens: `User.ToRefreshToken(...)` builds the `RefreshToken` entity; cookie lifetime follows `AuthMappings.RefreshTokenLifetime`.
+
+**Seed on startup**
+
+- Same as create-product: `DbSeeder` uses `new CreateProductDto { ... }.ToEntity()` so seed data always matches API mapping rules.
+
+### Key features
+
+- ✅ **EF Core Migrations** — schema versioning; `MigrateAsync` on startup
+- ✅ **Async I/O** — database calls are asynchronous
+- ✅ **AsNoTracking** — used on read-only paths where appropriate
+- ✅ **Split queries** — MySQL options use `UseQuerySplittingBehavior(SplitQuery)` to avoid cartesian blowups on multiple `Include`s
+- ✅ **Performance-focused methods** — list/read methods are query-shaped (`Where`, `OrderBy`, `Take`, projection) so SQL runs server-side with minimal payload
+- ✅ **N+1 prevention** — related data is fetched via projection/controlled includes in single shaped queries (plus split-query safety), avoiding per-row lazy-loading patterns
+- ✅ **Read-path indexes** — `Products` has indexes for common filters/pagination (`Price`, `Stock`, and `(Stock, Id)`)
+- ✅ **Search optimization** — MySQL FULLTEXT index on (`Name`, `Description`) for faster text search on longer terms
+- ✅ **Automatic seeding** — empty `Products` table gets three rows via mapping (see above)
+
+### Performance notes (N+1-safe pattern)
+
+Use query shaping in services so EF Core generates a small number of predictable SQL statements.
 
 ```csharp
-// Example: Get product by ID
-var item = await (from product in _db.Products
-                 where product.Id == id
-                 select product).FirstOrDefaultAsync();
+var query = _context.Products
+    .AsNoTracking()
+    .Where(p => p.Stock > 0)
+    .OrderBy(p => p.Id)
+    .Select(p => new ProductListItemDto
+    {
+        Id = p.Id,
+        Name = p.Name,
+        Price = p.Price
+    })
+    .Take(limit);
+
+var items = await query.ToListAsync(cancellationToken);
 ```
 
-**Key Features:**
+Why this helps:
 
-- ✅ **LINQ Query Syntax**: All queries use explicit `from...where...select` syntax
-- ✅ **EF Core Migrations**: Proper migration-based database schema management
-- ✅ **Async/Await**: All database operations are asynchronous
-- ✅ **AsNoTracking**: Read-only queries use `AsNoTracking()` for better performance
-- ✅ **Automatic Seeding**: Database is automatically seeded with sample data on startup
+- Projection (`Select`) returns only required columns (smaller payload, less materialization cost).
+- Filter + order + limit are pushed to SQL (efficient index-friendly execution).
+- One shaped query avoids per-row follow-up queries (prevents classic N+1 behavior).
+- Matching indexes (`Price`, `Stock`, `(Stock, Id)`) improve selectivity and keyset pagination scans.
+- Search uses `MATCH ... AGAINST` (FULLTEXT) for longer terms, with short-term fallback to `LIKE`.
 
-**Project Structure:**
+### Project structure (backend)
 
-- `backend/Controllers/ProductsController.cs` - REST API endpoints using LINQ queries
-- `backend/Data/AppDbContext.cs` - EF Core database context
-- `backend/Data/DbSeeder.cs` - Database seeding with LINQ queries
-- `backend/Models/Product.cs` - Product entity model
-- `backend/Migrations/` - EF Core migration files
+- `Controllers/` — HTTP endpoints (`ProductsController`, `AuthController`)
+- `Services/` — business logic (`ProductService`, `AuthService`)
+- `Mappings/` — DTO ↔ entity / response mapping
+- `DTOs/` — `Common/Pagination/`, `Products/`, `Users/`
+- `Models/` — EF entities
+- `Data/` — `AppDbContext`
+- `Seeder/` — `DbSeeder` (startup seed for development)
+- `Migrations/` — EF Core migrations
 
 ## Configuration Files
 
 **Important files for local development:**
 
+- `backend/Mappings/` - DTO ↔ entity and auth response mapping (`ProductMappings`, `AuthMappings`)
 - `backend/appsettings.Development.json` - Development connection string (MySQL on port 3308)
 - `backend/appsettings.json` - Production/Docker connection string (MySQL on port 3306, server: db)
 - `backend/Properties/launchSettings.json` - API port configuration (default: 5000)
 - `frontend/src/services/api.js` - Shared Axios client (base URL, auth headers, refresh-token + CSRF handling)
 - `frontend/src/services/auth.js` - Frontend auth helpers (in-memory access token, sessionStorage email/CSRF)
+- `frontend/src/main.js` - Vue app bootstrap (Pinia + `@tanstack/vue-query` plugin registration)
 - `docker-compose.yml` - Docker services and ports (MySQL on 3308)
 
 ## Local Development (Without Docker)
@@ -513,7 +561,28 @@ npm run dev
 # Default API URL: http://localhost:5000
 ```
 
-**Note:** The client is pre-configured to connect to `http://localhost:5000` by default. If you need to change the API URL, set the `VITE_API_URL` environment variable or update the default in `frontend/src/components/Products.vue`.
+**Note:** The client is pre-configured to connect to `http://localhost:5000` by default. If you need to change the API URL, set the `VITE_API_URL` environment variable or update the default in `frontend/src/services/api.js`.
+
+**TanStack Query for Vue (React Query equivalent)**
+
+This frontend already uses `@tanstack/vue-query`:
+
+- `frontend/src/main.js` registers `VueQueryPlugin` with a shared `QueryClient`.
+- `frontend/src/features/products/composables/useProducts.js` uses query/mutation composables for cached product reads and write invalidation.
+- Product/auth flows include normalized error extraction (`detail`, `message`, `title`, string payload, fallback text) to avoid undefined error messages in the UI.
+
+### Error Handling (latest)
+
+- **Backend controllers** (`AuthController`, `ProductsController`) wrap endpoint operations with `try/catch`, log with `ILogger`, and return safe `Problem(...)` responses for unexpected exceptions.
+- **Frontend auth/products** paths normalize unknown errors and show fallback messages instead of leaking raw/undefined error objects.
+- **App bootstrap/logout** in `frontend/src/App.vue` now handles failures explicitly and surfaces user-friendly alerts.
+
+### Typical run sequence (local)
+
+1. **Database** — MySQL reachable (e.g. `docker compose up db -d` on port **3308**, or local 3306 with updated connection string).
+2. **API** — `cd backend && dotnet run` → applies migrations, seeds products if empty, listens (see `launchSettings.json`; often **http://localhost:5000**). Swagger: `/swagger`.
+3. **Frontend** — `cd frontend && npm install && npm run dev` → Vite dev server (often **http://localhost:5173**).
+4. **Try it** — Register/login via `/api/Auth/*`, then CRUD products. For **how JSON becomes entities** (DTO → mapping → service → DB), see **Code Implementation** → _Manual mapping_ and _Request flow_.
 
 ## Run with Kubernetes (For Production/Scaling)
 
@@ -623,7 +692,7 @@ kubectl delete -k k8s
 
 **Issue: Port 5000 already in use**
 
-- **Solution**: Change the port in `backend/Properties/launchSettings.json` and update the client's default API URL in `frontend/src/components/Products.vue`
+- **Solution**: Change the port in `backend/Properties/launchSettings.json` and update the client's default API URL in `frontend/src/services/api.js`
 
 ### Database Connection Issues
 
@@ -659,6 +728,12 @@ kubectl delete -k k8s
 - Check container status: `docker ps -a` to see all containers (including stopped ones)
 - Restart specific container: `docker restart vuejs-csharp-api`
 
+**Issue: `client` or `api-nginx` exits immediately (nginx)**
+
+- **Cause (fixed in repo):** Nginx configs must not use `log_format` inside a `server { }` block (only in `http { }`). Invalid nested `location` blocks can also prevent startup.
+- **HTTP-only setup:** Client/API nginx run on localhost HTTP ports (`5173` and `8080`) by default.
+- **Diagnose:** `docker logs vuejs-csharp-client` or `docker logs vuejs-csharp-api-nginx` — look for `[emerg]` lines. After a rebuild, `nginx -t` should succeed inside the image.
+
 **Issue: Database not seeding or migrations not running**
 
 - Check API logs: `docker logs vuejs-csharp-api` for migration/seeding errors
@@ -674,11 +749,11 @@ kubectl delete -k k8s
 
 **Key Technical Features:**
 
-- ✅ LINQ Query Syntax for all database operations
+- ✅ EF Core with LINQ; manual DTO ↔ entity mapping (`Mappings/`)
 - ✅ EF Core Migrations for database schema management
-- ✅ Automatic database seeding on startup
+- ✅ Automatic database seeding on startup (via same product mapping as the API)
 - ✅ Named Docker containers for easy management
-- ✅ HTTPS support with self-signed certificates
+- ✅ HTTP localhost reverse-proxy setup for API and client
 - ✅ Full CRUD operations with RESTful API
 
 All methods use the same codebase. Choose based on your needs!
@@ -763,9 +838,9 @@ PS C:\Users\LEGION\Desktop\MyInterviewProject\VueJS-CSharp> git push origin main
 
 ### Commit message format
 
-- **Use clear English** that explains the change.  
-- Try to keep it **at least 10 characters long** so it is descriptive enough.  
-- A local **Husky + Commitlint** hook will validate the format when you run `git commit`.  
+- **Use clear English** that explains the change.
+- Try to keep it **at least 10 characters long** so it is descriptive enough.
+- A local **Husky + Commitlint** hook will validate the format when you run `git commit`.
 - You can follow a lightweight convention like:
   - `feat: add product filters`
   - `fix: handle auth token refresh error`

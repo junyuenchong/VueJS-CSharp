@@ -3,9 +3,10 @@ using Backend.Models;
 
 namespace Backend.Mappings;
 
-/// <summary>
-/// Centralized mappings to avoid duplicating DTO-to-Entity conversion in controllers/services.
-/// </summary>
+/*
+ * Product DTO → entity mapping.
+ * Keep mapping logic in one place so controller/service stay clean.
+ */
 public static class ProductMappings
 {
     public static Product ToEntity(this CreateProductDto dto)
@@ -31,4 +32,3 @@ public static class ProductMappings
         };
     }
 }
-

@@ -10,6 +10,20 @@ export const useProductsStore = defineStore("products", {
         search: "",
     }),
     actions: {
+        getErrorMessage(error, fallbackMessage) {
+            const message =
+                error?.response?.data?.detail ||
+                error?.response?.data?.message ||
+                error?.response?.data?.title ||
+                (typeof error?.response?.data === "string" ? error.response.data : null) ||
+                error?.message;
+
+            if (typeof message === "string" && message.trim().length > 0) {
+                return message;
+            }
+
+            return fallbackMessage;
+        },
         async reload() {
             this.loading = true;
             try {
@@ -20,6 +34,8 @@ export const useProductsStore = defineStore("products", {
                 });
                 this.items = data.items || [];
                 this.nextCursor = data.nextCursor || null;
+            } catch (error) {
+                throw new Error(this.getErrorMessage(error, "Failed to load products"));
             } finally {
                 this.loading = false;
             }
@@ -35,6 +51,8 @@ export const useProductsStore = defineStore("products", {
                 });
                 this.items = [...this.items, ...(data.items || [])];
                 this.nextCursor = data.nextCursor || null;
+            } catch (error) {
+                throw new Error(this.getErrorMessage(error, "Failed to load more products"));
             } finally {
                 this.loading = false;
             }
@@ -46,17 +64,25 @@ export const useProductsStore = defineStore("products", {
             this.editing = null;
         },
         async save(payload) {
-            if (payload.id) {
-                await productsApi().update(payload.id, payload);
-            } else {
-                await productsApi().create(payload);
+            try {
+                if (payload.id) {
+                    await productsApi().update(payload.id, payload);
+                } else {
+                    await productsApi().create(payload);
+                }
+                this.editing = null;
+                await this.reload();
+            } catch (error) {
+                throw new Error(this.getErrorMessage(error, "Failed to save product"));
             }
-            this.editing = null;
-            await this.reload();
         },
         async remove(id) {
-            await productsApi().remove(id);
-            await this.reload();
+            try {
+                await productsApi().remove(id);
+                await this.reload();
+            } catch (error) {
+                throw new Error(this.getErrorMessage(error, "Failed to delete product"));
+            }
         },
     },
 });

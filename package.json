@@ -4,7 +4,12 @@
     "version": "1.0.0",
     "scripts": {
         "prepare": "husky install",
-        "lint:commit": "commitlint --edit"
+        "lint:commit": "commitlint --edit",
+        "start": "docker compose -p crudapp up -d --build",
+        "docker:up": "docker compose -p crudapp up -d --build",
+        "docker:start": "docker compose -p crudapp up -d",
+        "docker:down": "docker compose -p crudapp down",
+        "docker:logs": "docker compose -p crudapp logs -f"
     },
     "devDependencies": {
         "@commitlint/cli": "^19.0.0",
