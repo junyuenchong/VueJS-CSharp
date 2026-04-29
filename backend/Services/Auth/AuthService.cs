@@ -91,74 +91,84 @@ public class AuthService : IAuthService
     /*  Refresh tokens via cookie+header and rotate refresh token */
     public async Task<AuthResponseDto> RefreshAsync()
     {
-        // Retrieve request context
         var context = _http.HttpContext ?? throw new InvalidOperationException("No HTTP context");
-        // Extract refresh token from cookie
         var refreshToken = context.Request.Cookies[RefreshCookieName];
         if (string.IsNullOrWhiteSpace(refreshToken))
             throw new UnauthorizedAccessException("Missing refresh token");
 
-        // Prepare hash for DB lookup
         var tokenHash = HashToken(refreshToken);
+        var now = DateTime.UtcNow;
 
-        // Query for corresponding refresh token and user
         var stored = await _db.RefreshTokens
             .AsNoTracking()
-            .Include(rt => rt.User)
-            .FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+            .Where(rt =>
+                rt.TokenHash == tokenHash &&
+                rt.RevokedAtUtc == null &&
+                rt.ExpiresAtUtc > now)
+            .Select(rt => new
+            {
+                rt.Id,
+                rt.CsrfTokenHash,
+                rt.UserId,
+                UserEmail = rt.User.Email
+            })
+            .FirstOrDefaultAsync();
 
-        // Validate token presence and activity
-        if (stored == null || !stored.IsActive)
+        if (stored == null)
             throw new UnauthorizedAccessException("Invalid refresh token");
 
-        // Verify CSRF token in header matches stored value
-        if (!IsValidCsrfTokenFor(stored))
+        if (!IsValidCsrfTokenHash(stored.CsrfTokenHash))
             throw new InvalidOperationException("Invalid CSRF token");
 
-        // Revoke token and rotate to new tokens
         await _db.RefreshTokens
             .Where(rt => rt.Id == stored.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.RevokedAtUtc, DateTime.UtcNow));
+            .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.RevokedAtUtc, now));
 
-        // Issue new set of tokens
-        var csrfToken = await IssueRefreshTokenAsync(stored.User);
-        var access = CreateAccessToken(stored.User);
+        var user = new User
+        {
+            Id = stored.UserId,
+            Email = stored.UserEmail
+        };
 
-        // Respond with refreshed authentication info
-        return stored.User.ToAuthResponse(access, csrfToken);
+        var csrfToken = await IssueRefreshTokenAsync(user);
+        var access = CreateAccessToken(user);
+        return user.ToAuthResponse(access, csrfToken);
     }
 
     /* Logout by revoking refresh token and clearing cookies */
     public async Task LogoutAsync()
     {
-        // Get HTTP context
         var context = _http.HttpContext ?? throw new InvalidOperationException("No HTTP context");
-        // Attempt to read refresh token cookie
         var refreshToken = context.Request.Cookies[RefreshCookieName];
 
-        // Only process if refresh token exists
         if (!string.IsNullOrWhiteSpace(refreshToken))
         {
-            // Hash token for lookup and get stored item
             var tokenHash = HashToken(refreshToken);
-            var stored = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == tokenHash);
+            var stored = await _db.RefreshTokens
+                .AsNoTracking()
+                .Where(rt => rt.TokenHash == tokenHash)
+                .Select(rt => new
+                {
+                    rt.Id,
+                    rt.CsrfTokenHash,
+                    rt.RevokedAtUtc
+                })
+                .FirstOrDefaultAsync();
 
             if (stored != null)
             {
-                // Ensure CSRF header token matches stored hash
-                if (!IsValidCsrfTokenFor(stored))
+                if (!IsValidCsrfTokenHash(stored.CsrfTokenHash))
                     throw new InvalidOperationException("Invalid CSRF token");
 
-                // Revocation performed only if not already revoked
                 if (stored.RevokedAtUtc == null)
                 {
-                    stored.RevokedAtUtc = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
+                    await _db.RefreshTokens
+                        .Where(rt => rt.Id == stored.Id && rt.RevokedAtUtc == null)
+                        .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.RevokedAtUtc, DateTime.UtcNow));
                 }
             }
         }
 
-        // Always clear cookies regardless of token status
         ClearAuthCookies();
     }
 
@@ -227,17 +237,14 @@ public class AuthService : IAuthService
         context.Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/Auth" });
     }
 
-    /* Verify incoming CSRF header token against hash in DB */
-    private bool IsValidCsrfTokenFor(RefreshToken stored)
+    private bool IsValidCsrfTokenHash(string csrfTokenHash)
     {
-        // Get HTTP context and header value
         var context = _http.HttpContext ?? throw new InvalidOperationException("No HTTP context");
         if (!context.Request.Headers.TryGetValue(CsrfHeaderName, out var headerValues)) return false;
         var header = headerValues.ToString();
         if (string.IsNullOrWhiteSpace(header)) return false;
 
-        // Compare hashes for validity
-        return string.Equals(HashToken(header), stored.CsrfTokenHash, StringComparison.Ordinal);
+        return string.Equals(HashToken(header), csrfTokenHash, StringComparison.Ordinal);
     }
 
     /* SHA-256 one-way hash for tokens before DB persistence */

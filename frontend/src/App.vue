@@ -59,17 +59,33 @@ onMounted(async () => {
 </script>
 
 <style>
+:root {
+  --ui-bg: #fafafa;
+  --ui-surface: #ffffff;
+  --ui-border: #e5e7eb;
+  --ui-muted: #555;
+  --ui-primary: #007bff;
+  --ui-danger: #b00020;
+  --ui-radius-sm: 8px;
+  --ui-radius-md: 10px;
+  --ui-control-height: 42px;
+  --ui-space-1: 0.5rem;
+  --ui-space-2: 0.75rem;
+  --ui-space-3: 1rem;
+}
+
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--ui-bg);
 }
 .container {
   max-width: 900px;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  margin: 1rem auto;
+  padding: 0 0.875rem 1.5rem;
 }
 .top {
   display: flex;
@@ -83,8 +99,9 @@ body {
   gap: 0.75rem;
 }
 .email {
-  color: #555;
+  color: var(--ui-muted);
   font-size: 0.95rem;
+  word-break: break-word;
 }
 table {
   width: 100%;
@@ -93,7 +110,7 @@ table {
 }
 th,
 td {
-  border: 1px solid #ddd;
+  border: 1px solid var(--ui-border);
   padding: 8px;
 }
 th {
@@ -103,6 +120,7 @@ th {
 input,
 button {
   padding: 8px;
+  min-height: var(--ui-control-height);
 }
 button {
   cursor: pointer;
@@ -111,5 +129,28 @@ button {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .container {
+    margin-top: 0.5rem;
+    padding: 0 0.75rem 1rem;
+  }
+
+  .top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .top h1 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+
+  .right {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>

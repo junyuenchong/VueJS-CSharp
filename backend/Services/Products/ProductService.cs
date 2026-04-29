@@ -14,6 +14,8 @@ namespace Backend.Services.Products;
  */
 public class ProductService : IProductService
 {
+    private const int DefaultPageSize = 20;
+    private const int MaxPageSize = 100;
     private readonly AppDbContext _context;
 
     public ProductService(AppDbContext context)
@@ -27,9 +29,7 @@ public class ProductService : IProductService
      */
     public async Task<PagedResult<Product>> GetAllAsync(ProductQueryParameters query)
     {
-        var limit = query.Limit;
-        if (limit <= 0) limit = 20;
-        if (limit > 100) limit = 100; // protect DB
+        var limit = query.Limit <= 0 ? DefaultPageSize : Math.Min(query.Limit, MaxPageSize);
 
         IQueryable<Product> q = _context.Products.AsNoTracking();
 
@@ -72,12 +72,13 @@ public class ProductService : IProductService
             .Take(limit + 1) // fetch one extra to determine next cursor
             .ToListAsync();
 
+        var hasMore = items.Count > limit;
         int? nextCursor = null;
-        if (items.Count > limit)
+        if (hasMore)
         {
             var last = items[limit - 1];
             nextCursor = last.Id;
-            items = items.Take(limit).ToList();
+            items.RemoveAt(limit);
         }
 
         return new PagedResult<Product>
@@ -113,13 +114,14 @@ public class ProductService : IProductService
         if (id != product.Id)
             return false;
 
-        var exists = await ExistsAsync(id);
-        if (!exists)
-            return false;
-
-        _context.Entry(product).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-        return true;
+        var affected = await _context.Products
+            .Where(p => p.Id == id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.Name, product.Name)
+                .SetProperty(p => p.Description, product.Description)
+                .SetProperty(p => p.Price, product.Price)
+                .SetProperty(p => p.Stock, product.Stock));
+        return affected > 0;
     }
 
     /*
@@ -128,18 +130,15 @@ public class ProductService : IProductService
      */
     public async Task<bool> DeleteAsync(int id)
     {
-        var product = await GetByIdAsync(id);
-        if (product == null)
-            return false;
-
-        _context.Products.Remove(product);
-        await _context.SaveChangesAsync();
-        return true;
+        var affected = await _context.Products
+            .Where(p => p.Id == id)
+            .ExecuteDeleteAsync();
+        return affected > 0;
     }
 
     /* Fast exists check for update logic. */
     public async Task<bool> ExistsAsync(int id)
     {
-        return await _context.Products.AsNoTracking().AnyAsync(p => p.Id == id);
+        return await _context.Products.AnyAsync(p => p.Id == id);
     }
 }

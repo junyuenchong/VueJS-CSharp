@@ -1,5 +1,5 @@
 <template>
-  <section>
+  <section class="productsPage">
     <h2>Products</h2>
     <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
@@ -52,11 +52,27 @@ reload();
 
 <style scoped>
 .pager {
-  margin-top: 1rem;
+  margin-top: var(--ui-space-3);
+}
+.pager button {
+  width: 100%;
+  max-width: 220px;
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-radius-sm);
 }
 .error {
-  color: #b00020;
+  color: var(--ui-danger);
   margin: 0.5rem 0;
+}
+
+@media (max-width: 700px) {
+  .productsPage h2 {
+    margin-bottom: 0.5rem;
+  }
+
+  .pager button {
+    max-width: none;
+  }
 }
 </style>
 

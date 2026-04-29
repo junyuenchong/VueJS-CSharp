@@ -24,7 +24,14 @@ function onInput(event) {
 
 <style scoped>
 .toolbar {
-  margin-top: 1rem;
+  margin-top: var(--ui-space-3);
+}
+
+.toolbar input {
+  width: 100%;
+  padding: var(--ui-space-2);
+  border-radius: var(--ui-radius-sm);
+  min-height: var(--ui-control-height);
 }
 </style>
 

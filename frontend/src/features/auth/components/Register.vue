@@ -57,31 +57,43 @@ async function submit() {
 
 <style scoped>
 .card {
-  max-width: 380px;
-  margin: 2rem auto;
-  padding: 1rem;
-  border: 1px solid #eee;
-  border-radius: 10px;
+  width: 100%;
+  max-width: 420px;
+  margin: var(--ui-space-3) auto;
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
 }
 form {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--ui-space-2);
 }
 input,
 button {
-  padding: 0.75rem;
+  width: 100%;
+  padding: var(--ui-space-2);
   font-size: 1rem;
+  border-radius: var(--ui-radius-sm);
+  min-height: var(--ui-control-height);
 }
 .hint {
-  margin-top: 0.75rem;
-  color: #555;
+  margin-top: var(--ui-space-2);
+  color: var(--ui-muted);
 }
 .link {
   padding: 0;
   border: none;
   background: none;
-  color: #007bff;
+  color: var(--ui-primary);
   cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .card {
+    margin: var(--ui-space-1) auto;
+    padding: 0.875rem;
+  }
 }
 </style>
 

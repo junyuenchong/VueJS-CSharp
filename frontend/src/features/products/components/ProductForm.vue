@@ -53,20 +53,28 @@ function submit() {
 <style scoped>
 .form {
   display: grid;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-3);
 }
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.5rem;
+  gap: var(--ui-space-1);
+}
+input,
+textarea,
+button {
+  width: 100%;
+  border-radius: var(--ui-radius-sm);
+  padding: var(--ui-space-2);
+  min-height: var(--ui-control-height);
 }
 textarea {
   min-height: 80px;
 }
 .actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--ui-space-1);
   flex-wrap: wrap;
 }
 .secondary {
@@ -75,6 +83,10 @@ textarea {
 @media (max-width: 600px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column;
   }
 }
 </style>
