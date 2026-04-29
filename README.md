@@ -837,7 +837,6 @@ PS C:\Users\LEGION\Desktop\MyInterviewProject\VueJS-CSharp> git push origin main
 ```
 
 ### Commit message format
-
 - **Use clear English** that explains the change.
 - Try to keep it **at least 10 characters long** so it is descriptive enough.
 - A local **Husky + Commitlint** hook will validate the format when you run `git commit`.
