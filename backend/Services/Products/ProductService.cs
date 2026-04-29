@@ -131,6 +131,23 @@ public class ProductService : IProductService
         if (id != product.Id)
             return false;
 
+        // EF Core bulk operations aren't supported by the InMemory provider (commonly used in tests).
+        // Fall back to tracked entity updates so E2E tests behave like a real relational provider.
+        if (string.Equals(_context.Database.ProviderName, "Microsoft.EntityFrameworkCore.InMemory", StringComparison.Ordinal))
+        {
+            var existing = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            if (existing == null)
+                return false;
+
+            existing.Name = product.Name;
+            existing.Description = product.Description;
+            existing.Price = product.Price;
+            existing.Stock = product.Stock;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         var affected = await _context.Products
             .Where(p => p.Id == id)
             .ExecuteUpdateAsync(s => s
@@ -147,6 +164,18 @@ public class ProductService : IProductService
      */
     public async Task<bool> DeleteAsync(int id)
     {
+        // EF Core bulk operations aren't supported by the InMemory provider (commonly used in tests).
+        if (string.Equals(_context.Database.ProviderName, "Microsoft.EntityFrameworkCore.InMemory", StringComparison.Ordinal))
+        {
+            var existing = await _context.Products.FirstOrDefaultAsync(p => p.Id == id);
+            if (existing == null)
+                return false;
+
+            _context.Products.Remove(existing);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         var affected = await _context.Products
             .Where(p => p.Id == id)
             .ExecuteDeleteAsync();
