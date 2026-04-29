@@ -71,9 +71,25 @@ public class AuthService : IAuthService
     {
         // Normalize and look up email
         var email = AuthMappings.NormalizeEmail(dto.Email);
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email);
-        if (user == null)
+        var userRow = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Email == email)
+            .Select(u => new
+            {
+                u.Id,
+                u.Email,
+                u.PasswordHash
+            })
+            .FirstOrDefaultAsync();
+        if (userRow == null)
             throw new UnauthorizedAccessException("Invalid email or password");
+
+        var user = new User
+        {
+            Id = userRow.Id,
+            Email = userRow.Email,
+            PasswordHash = userRow.PasswordHash
+        };
 
         // Confirm password hash
         var result = _hasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);

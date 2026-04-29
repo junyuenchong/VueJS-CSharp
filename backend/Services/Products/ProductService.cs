@@ -69,6 +69,14 @@ public class ProductService : IProductService
         // Always order by cursor column
         var items = await q
             .OrderBy(p => p.Id)
+            .Select(p => new Product
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                Stock = p.Stock
+            })
             .Take(limit + 1) // fetch one extra to determine next cursor
             .ToListAsync();
 
@@ -94,7 +102,16 @@ public class ProductService : IProductService
     {
         return await _context.Products
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .Where(p => p.Id == id)
+            .Select(p => new Product
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
+                Stock = p.Stock
+            })
+            .FirstOrDefaultAsync();
     }
 
     /* Create a product row. */
